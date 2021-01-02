@@ -130,7 +130,7 @@ struct NormalMapShader : public IShader
 
     virtual bool fragment(Vec3f bar, TGAColor &color)
     {
-        // 为当前像素uv坐标计算插值
+        // 为当前像素计算uv坐标插值
         Vec2f uv = varying_uv * bar;
         // 将法线转换到屏投影空间
         Vec3f n = proj<3>(uniform_MIT * embed<4>(model->normal(uv))).normalize();
@@ -163,7 +163,7 @@ struct PhongShader : public IShader
 
     virtual bool fragment(Vec3f bar, TGAColor &color)
     {
-        // 为当前像素uv坐标计算插值
+        // 为当前像素计算uv坐标插值
         Vec2f uv = varying_uv * bar;
         // 将法线转换到屏投影空间
         Vec3f n = proj<3>(uniform_MIT * embed<4>(model->normal(uv))).normalize();
@@ -210,8 +210,9 @@ struct TangentNormalMapShader : public IShader
 
     virtual bool fragment(Vec3f bar, TGAColor &color)
     {
+        // 为当前像素计算法线插值
         Vec3f bn = (varying_nrm * bar).normalize();
-        // 为当前像素uv坐标计算插值
+        // 为当前像素计算uv坐标插值
         Vec2f uv = varying_uv * bar;
 
         mat<3, 3, float> A;
@@ -231,6 +232,7 @@ struct TangentNormalMapShader : public IShader
 
         Vec3f n = (B * model->tangent_normal(uv)).normalize();
 
+        // 着色
         float diff = std::max(0.f, n * light_dir);
         color = model->diffuse(uv) * diff;
 
