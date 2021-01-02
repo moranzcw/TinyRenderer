@@ -1,4 +1,17 @@
+----
+textures
+----
 output.tga
 zbuffer.tga
+
+----
+binaries
+----
 a.out
+main
+*.o
+
+----
+system files
+----
 .DS_Store
