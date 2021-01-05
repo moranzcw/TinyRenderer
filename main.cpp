@@ -242,13 +242,9 @@ struct TangentNormalMapShader : public IShader
 
 int main(int argc, char **argv)
 {
-    if (2 == argc)
+    if (argc < 2)
     {
-        model = new Model(argv[1]);
-    }
-    else
-    {
-        model = new Model("obj/african_head.obj");
+        return 0;
     }
 
     lookat(eye, center, up);
@@ -272,27 +268,30 @@ int main(int argc, char **argv)
     // shader.uniform_M   =  Projection*ModelView;
     // shader.uniform_MIT = (Projection*ModelView).invert_transpose();
 
-    // PhongShader shader;
+    PhongShader shader;
+    shader.uniform_M = Projection * ModelView;
+    shader.uniform_MIT = (Projection * ModelView).invert_transpose();
+
+    // TangentNormalMapShader shader;
     // shader.uniform_M   =  Projection*ModelView;
     // shader.uniform_MIT = (Projection*ModelView).invert_transpose();
 
-    TangentNormalMapShader shader;
-    shader.uniform_M   =  Projection*ModelView;
-    shader.uniform_MIT = (Projection*ModelView).invert_transpose();
-
-    for (int i = 0; i < model->nfaces(); i++)
+    for (int i = 1; i < argc; i++)
     {
-        for (int j = 0; j < 3; j++)
+        model = new Model(argv[i]);
+        for (int i = 0; i < model->nfaces(); i++)
         {
-            shader.vertex(i, j);
+            for (int j = 0; j < 3; j++)
+            {
+                shader.vertex(i, j);
+            }
+            triangle(shader.varying_tri, shader, image, zbuffer);
         }
-        triangle(shader.varying_tri, shader, image, zbuffer);
+        delete model;
     }
 
     image.flip_vertically(); // 上下翻转，让原点在左下角
     image.write_tga_file("output.tga");
-
-    delete model;
     delete[] zbuffer;
     return 0;
 }
