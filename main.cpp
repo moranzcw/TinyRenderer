@@ -9,8 +9,8 @@
 Model *model = NULL;
 float *shadowbuffer = NULL;
 
-const int width = 1600;
-const int height = 1600;
+const int width = 800;
+const int height = 800;
 
 Vec3f light_dir(1, 1, 1);
 Vec3f eye(1, 1, 4);
@@ -264,8 +264,8 @@ struct ShadowShader : public IShader
     {
         Vec4f sb_p = uniform_Mshadow * embed<4>(varying_tri * bar); // corresponding point in the shadow buffer
         sb_p = sb_p / sb_p[3];
-        int idx = int(sb_p[0]) + int(sb_p[1]) * width;               // index in the shadowbuffer array
-        float shadow = .3 + .7 * (shadowbuffer[idx] < sb_p[2] + 2.); // magic coeff to avoid z-fighting
+        int idx = int(sb_p[0]) + int(sb_p[1]) * width;                // index in the shadowbuffer array
+        float shadow = .1 + .9 * (shadowbuffer[idx] < sb_p[2] + 50.); // magic coeff to avoid z-fighting
         // 插值uv坐标
         Vec2f uv = varying_uv * bar;
         // 将法线转换到投影空间
@@ -315,95 +315,106 @@ int main(int argc, char **argv)
     {
         return 0;
     }
-
-    float *zbuffer = new float[width * height];
-    for (int i = width * height; i--;)
+    for (int k = 0; k < 50; k++)
     {
-        zbuffer[i] = -std::numeric_limits<float>::max();
-    }
-    shadowbuffer = new float[width * height];
+        eye = Vec3f(1 - 0.05 * k, 1, 4);
+        light_dir = Vec3f(-1 + 0.05 * k, 1, 1 - 0.005 * k);
 
-    light_dir.normalize();
-
-    // 渲染阴影
-    {
-        TGAImage depth(width, height, TGAImage::RGB);
-        lookat(light_dir, center, up);
-        viewport(width / 8, height / 8, width * 3 / 4, height * 3 / 4);
-        projection(0);
-
-        DepthShader depthshader;
-
-        for (int i = 1; i < argc; i++)
+        float *zbuffer = new float[width * height];
+        for (int i = width * height; i--;)
         {
-            model = new Model(argv[i]);
-
-            Vec4f screen_coords[3];
-            for (int i = 0; i < model->nfaces(); i++)
-            {
-                for (int j = 0; j < 3; j++)
-                {
-                    screen_coords[j] = depthshader.vertex(i, j);
-                }
-                triangle(screen_coords, depthshader, depth, shadowbuffer);
-            }
-            delete model;
+            zbuffer[i] = -std::numeric_limits<float>::max();
         }
-        depth.flip_vertically(); // to place the origin in the bottom left corner of the image
-        depth.write_tga_file("depth.tga");
-    }
-
-    Matrix M = Viewport * Projection * ModelView;
-
-    // 渲染图像
-    {
-        TGAImage image(width, height, TGAImage::RGB);
-
-        lookat(eye, center, up);
-        viewport(width / 8, height / 8, width * 3 / 4, height * 3 / 4);
-        projection(-1.f / (eye - center).norm());
-
-        // GouraudShader shader;
-
-        // StylizedGouraudShader shader;
-
-        // TextureGouraudShader shader;
-
-        // NormalMapShader shader;
-        // shader.uniform_M   =  Projection*ModelView;
-        // shader.uniform_MIT = (Projection*ModelView).invert_transpose();
-
-        // PhongShader shader;
-        // shader.uniform_M = Projection * ModelView;
-        // shader.uniform_MIT = (Projection * ModelView).invert_transpose();
-
-        // TangentNormalMapShader shader;
-        // shader.uniform_M   =  Projection*ModelView;
-        // shader.uniform_MIT = (Projection*ModelView).invert_transpose();
-
-        ShadowShader shader(Projection * ModelView, (Projection * ModelView).invert_transpose(), M * (Viewport * Projection * ModelView).invert());
-
-        for (int i = 1; i < argc; i++)
+        shadowbuffer = new float[width * height];
+        for (int i = width * height; i--;)
         {
-            model = new Model(argv[i]);
-
-            Vec4f screen_coords[3];
-            for (int i = 0; i < model->nfaces(); i++)
-            {
-                for (int j = 0; j < 3; j++)
-                {
-                    screen_coords[j] = shader.vertex(i, j);
-                }
-                triangle(screen_coords, shader, image, zbuffer);
-            }
-            delete model;
+            shadowbuffer[i] = -std::numeric_limits<float>::max();
         }
 
-        image.flip_vertically(); // 上下翻转，让原点在左下角
-        image.write_tga_file("output.tga");
-    }
+        light_dir.normalize();
 
-    delete[] zbuffer;
-    delete[] shadowbuffer;
+        // 渲染阴影图
+        {
+            TGAImage depth(width, height, TGAImage::RGB);
+            lookat(light_dir, center, up);
+            viewport(width / 8, height / 8, width * 3 / 4, height * 3 / 4);
+            projection(0);
+
+            DepthShader depthshader;
+
+            for (int i = 1; i < argc; i++)
+            {
+                model = new Model(argv[i]);
+
+                Vec4f screen_coords[3];
+                for (int i = 0; i < model->nfaces(); i++)
+                {
+                    for (int j = 0; j < 3; j++)
+                    {
+                        screen_coords[j] = depthshader.vertex(i, j);
+                    }
+                    triangle(screen_coords, depthshader, depth, shadowbuffer);
+                }
+                delete model;
+            }
+            depth.flip_vertically(); // to place the origin in the bottom left corner of the image
+            depth.write_tga_file("depth.tga");
+        }
+
+        Matrix M = Viewport * Projection * ModelView;
+
+        // 渲染图像
+        {
+            TGAImage image(width, height, TGAImage::RGB);
+
+            lookat(eye, center, up);
+            viewport(width / 8, height / 8, width * 3 / 4, height * 3 / 4);
+            projection(-1.f / (eye - center).norm());
+
+            // GouraudShader shader;
+
+            // StylizedGouraudShader shader;
+
+            // TextureGouraudShader shader;
+
+            // NormalMapShader shader;
+            // shader.uniform_M   =  Projection*ModelView;
+            // shader.uniform_MIT = (Projection*ModelView).invert_transpose();
+
+            // PhongShader shader;
+            // shader.uniform_M = Projection * ModelView;
+            // shader.uniform_MIT = (Projection * ModelView).invert_transpose();
+
+            // TangentNormalMapShader shader;
+            // shader.uniform_M   =  Projection*ModelView;
+            // shader.uniform_MIT = (Projection*ModelView).invert_transpose();
+
+            ShadowShader shader(Projection * ModelView, (Projection * ModelView).invert_transpose(), M * (Viewport * Projection * ModelView).invert());
+
+            for (int i = 1; i < argc; i++)
+            {
+                model = new Model(argv[i]);
+
+                Vec4f screen_coords[3];
+                for (int i = 0; i < model->nfaces(); i++)
+                {
+                    for (int j = 0; j < 3; j++)
+                    {
+                        screen_coords[j] = shader.vertex(i, j);
+                    }
+                    triangle(screen_coords, shader, image, zbuffer);
+                }
+                delete model;
+            }
+
+            image.flip_vertically(); // 上下翻转，让原点在左下角
+            char filename[40];
+            sprintf(filename, "output%04d.tga", k);
+            image.write_tga_file(filename);
+        }
+
+        delete[] zbuffer;
+        delete[] shadowbuffer;
+    }
     return 0;
 }
